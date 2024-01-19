@@ -6,6 +6,7 @@ from app.exceptions import EnvironmentVarNotExists
 
 
 ENVIRONMENT = dotenv_values("../.env")
+ENVIRONMENT = dotenv_values(".env")
 
 
 def get_env(env_name: str, prefer_local=True) -> str:
