@@ -1,8 +1,8 @@
 
 import unittest
 
-from noc_api.services.environment import get_env
-from noc_api.exceptions import EnvironmentVarNotExists
+from app.services.environment import get_env
+from app.exceptions import EnvironmentVarNotExists
 
 
 class TestEnvironment(unittest.TestCase):

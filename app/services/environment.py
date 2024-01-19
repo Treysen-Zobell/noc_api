@@ -1,9 +1,8 @@
 import os
 from dotenv import dotenv_values
-import logging
 
 
-from noc_api.exceptions import EnvironmentVarNotExists
+from app.exceptions import EnvironmentVarNotExists
 
 
 ENVIRONMENT = dotenv_values("../.env")
@@ -30,3 +29,11 @@ def get_env(env_name: str, prefer_local=True) -> str:
         return local_env or global_env
     else:
         return global_env or local_env
+
+
+CMS_IP = get_env("CMS_IP")
+CMS_USERNAME = get_env("CMS_USERNAME")
+CMS_PASSWORD = get_env("CMS_PASSWORD")
+CMS_NODES = get_env("CMS_NODES")
+
+API_URL = get_env("API_URL")
