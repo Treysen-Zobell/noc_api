@@ -15,11 +15,11 @@ from app.models.modem import ModemInterface, ModemPort, ModemPerformance, ModemS
 
 class CmsClient:
     def __init__(self):
-        self.netconf_url = f"http://{CMS_IP}:18080/cmsexc/ex/netconf"
+        self.netconf_url = self.generate_netconf_url(CMS_IP)
         self.session_id = None
 
     # --- Authentication ---
-    def login(self) -> str:
+    def login(self, username=CMS_USERNAME, password=CMS_PASSWORD) -> str:
         """
         Sends a login to request to the CMS server. Uses the ip, username, and password from the environment variables
         CMS_IP, CMS_USERNAME, and CMS_PASSWORD.
@@ -34,17 +34,16 @@ class CmsClient:
             <soapenv:Body>
             <auth message-id="{self.message_id}">
                 <login>
-                    <UserName>{CMS_USERNAME}</UserName>
-                    <Password>{CMS_PASSWORD}</Password>
+                    <UserName>{username}</UserName>
+                    <Password>{password}</Password>
                 </login>
             </auth>
             </soapenv:Body>
             </soapenv:Envelope>"""
         resp, _ = self.__post(payload)
-        print(resp)
 
         if resp == {}:
-            raise CmsCommunicationFailure
+            raise CmsCommunicationFailure(self.netconf_url)
 
         code = get(resp, "Envelope.Body.auth-reply.ResultCode")
         session_id = get(resp, "Envelope.Body.auth-reply.SessionId")
@@ -1470,6 +1469,9 @@ class CmsClient:
     @property
     def headers(self):
         return {"Content-Type": "text/xml;charset=ISO8859-1", "User-Agent": f"CMS_NBI_CONNECT-{CMS_USERNAME}"}
+
+    def generate_netconf_url(self, ip: str):
+        return f"http://{ip}:18080/cmsexc/ex/netconf"
 
     def __post(self, payload: str, timeout: int = 5):
         try:

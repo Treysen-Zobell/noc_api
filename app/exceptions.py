@@ -41,8 +41,8 @@ class CmsCommunicationFailure(Exception):
     Exception raised when a cms request fails because of an invalid request or no connection.
     """
 
-    def __init__(self, ip):
-        self.ip = ip
+    def __init__(self, url):
+        self.url = url
 
     def __str__(self):
-        return f"REQUEST FOR CMS SERVER {self.ip} FAILED"
+        return f"REQUEST FOR CMS SERVER {self.url} FAILED"

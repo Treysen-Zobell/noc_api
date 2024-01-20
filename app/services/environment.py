@@ -5,7 +5,6 @@ from dotenv import dotenv_values
 from app.exceptions import EnvironmentVarNotExists
 
 
-ENVIRONMENT = dotenv_values("../.env")
 ENVIRONMENT = dotenv_values(".env")
 
 
