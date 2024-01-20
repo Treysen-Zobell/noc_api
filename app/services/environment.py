@@ -1,9 +1,8 @@
 import os
+
 from dotenv import dotenv_values
 
-
-from app.exceptions import EnvironmentVarNotExists
-
+from app.models.exceptions import EnvironmentVarNotExists
 
 ENVIRONMENT = dotenv_values(".env")
 

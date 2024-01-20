@@ -1,6 +1,4 @@
-
 import unittest
-from math import isclose
 
 import pydantic
 
@@ -18,7 +16,7 @@ class TestModel(unittest.TestCase):
             shelf=1,
             registration_id=None,
             low_rx_opt_pwr_ne_thresh=-35.0,
-            ont_port_color="0"
+            ont_port_color="0",
         )
 
         self.assertIsInstance(ont.parent_node, str)

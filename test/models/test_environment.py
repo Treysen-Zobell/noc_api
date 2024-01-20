@@ -1,8 +1,7 @@
-
 import unittest
 
+from app.models.exceptions import EnvironmentVarNotExists
 from app.services.environment import get_env
-from app.exceptions import EnvironmentVarNotExists
 
 
 class TestEnvironment(unittest.TestCase):

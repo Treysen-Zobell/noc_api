@@ -7,11 +7,12 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_utils.tasks import repeat_every
 
-# Local App Imports
-from app.services.environment import API_URL
+from app.models.exceptions import CmsDeauthenticationFailure
 from app.routes import cms
 from app.services.cms import CmsClient
-from app.exceptions import CmsDeauthenticationFailure
+
+# Local App Imports
+from app.services.environment import API_URL
 
 
 def custom_generate_unique_id(route: APIRouter) -> str:
@@ -78,7 +79,10 @@ async def app_shutdown():
 
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", port=8003, reload=True, host="0.0.0.0", proxy_headers=True)
+    uvicorn.run(
+        "app.main:app", port=8003, reload=True, host="0.0.0.0", proxy_headers=True
+    )
 
 # poetry shell
 # uvicorn app.main:app --host 0.0.0.0 --reload
+# python -m unittest
