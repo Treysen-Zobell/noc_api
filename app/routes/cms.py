@@ -85,9 +85,9 @@ def get_ont_voice_port(
     return cms.get_ont_voice_service(node_id, ont_id, port_number)
 
 
-@router.get("/ont/{node_id}/{ont_id}/performance/reset",
-            summary="Gets the current BIP (Background Interference Pattern) errors on an ONT.",
-            description="Retrieves the current BIP errors on a specific ONT.")
+@router.patch("/ont/{node_id}/{ont_id}/performance/reset",
+              summary="Gets the current BIP (Background Interference Pattern) errors on an ONT.",
+              description="Retrieves the current BIP errors on a specific ONT.")
 def reset_ont_performance(
         request: Request,
         node_id: str,
@@ -97,9 +97,9 @@ def reset_ont_performance(
     return cms.reset_ont_performance(node_id, ont_id)
 
 
-@router.get("/ont/{node_id}/{ont_id}/reset",
-            summary="Resets an ONT.",
-            description="Initiates a reset operation on a specific ONT.")
+@router.patch("/ont/{node_id}/{ont_id}/reset",
+              summary="Resets an ONT.",
+              description="Initiates a reset operation on a specific ONT.")
 def reset_ont(
         request: Request,
         node_id: str,
@@ -109,9 +109,9 @@ def reset_ont(
     return OntAction(success=cms.reset_ont(node_id, ont_id), additional_info="")
 
 
-@router.get("/ont/{node_id}/{ont_id}/quarantine",
-            summary="Enters an ONT into quarantine.",
-            description="Puts a specific ONT into quarantine.")
+@router.patch("/ont/{node_id}/{ont_id}/quarantine",
+              summary="Enters an ONT into quarantine.",
+              description="Puts a specific ONT into quarantine.")
 def quarantine_ont(
         request: Request,
         node_id: str,
@@ -121,9 +121,9 @@ def quarantine_ont(
     return OntAction(success=cms.quarantine_ont(node_id, ont_id), additional_info="")
 
 
-@router.get("/ont/{node_id}/{ont_id}/release",
-            summary="Removes an ONT from quarantine.",
-            description="Releases a specific ONT from quarantine.")
+@router.patch("/ont/{node_id}/{ont_id}/release",
+              summary="Removes an ONT from quarantine.",
+              description="Releases a specific ONT from quarantine.")
 def release_ont(
         request: Request,
         node_id: str,
@@ -133,9 +133,9 @@ def release_ont(
     return OntAction(success=cms.release_ont(node_id, ont_id), additional_info="")
 
 
-@router.get("/ont/{node_id}/{ont_id}/disable",
-            summary="Disables an ONT.",
-            description="Sets the admin state of a specific ONT to disabled.")
+@router.patch("/ont/{node_id}/{ont_id}/disable",
+              summary="Disables an ONT.",
+              description="Sets the admin state of a specific ONT to disabled.")
 def disable_ont(
         request: Request,
         node_id: str,
@@ -145,9 +145,9 @@ def disable_ont(
     return OntAction(success=cms.disable_ont(node_id, ont_id), additional_info="")
 
 
-@router.get("/ont/{node_id}/{ont_id}/{port_nr}/disable",
-            summary="Disables an ONT port.",
-            description="Sets the admin state of a specific ONT port to disabled.")
+@router.patch("/ont/{node_id}/{ont_id}/{port_nr}/disable",
+              summary="Disables an ONT port.",
+              description="Sets the admin state of a specific ONT port to disabled.")
 def disable_ont_port(
         request: Request,
         node_id: str,
@@ -158,9 +158,9 @@ def disable_ont_port(
     return OntAction(success=cms.disable_ont_port(node_id, ont_id, port_nr), additional_info="")
 
 
-@router.get("/ont/{node_id}/{ont_id}/enable",
-            summary="Enables an ONT.",
-            description="Sets the admin state of a specific ONT to enabled.")
+@router.patch("/ont/{node_id}/{ont_id}/enable",
+              summary="Enables an ONT.",
+              description="Sets the admin state of a specific ONT to enabled.")
 def enable_ont(
         request: Request,
         node_id: str,
@@ -170,9 +170,9 @@ def enable_ont(
     return OntAction(success=cms.enable_ont(node_id, ont_id), additional_info="")
 
 
-@router.get("/ont/{node_id}/{ont_id}/{port_nr}/enable",
-            summary="Enables an ONT port.",
-            description="Sets the admin state of a specific ONT port to enabled.")
+@router.patch("/ont/{node_id}/{ont_id}/{port_nr}/enable",
+              summary="Enables an ONT port.",
+              description="Sets the admin state of a specific ONT port to enabled.")
 def enable_ont_port(
         request: Request,
         node_id: str,
@@ -226,9 +226,9 @@ def get_xdsl_performance(
     return cms.get_xdsl_performance(node_id, shelf_nr, card_nr, interface_id)
 
 
-@router.get("/xdsl/{node_id}/{shelf_nr}/{card_nr}/{interface_id}/enable",
-            summary="Enables a modem's connection.",
-            description="Sets an xDSL modem's admin state to enabled.")
+@router.patch("/xdsl/{node_id}/{shelf_nr}/{card_nr}/{interface_id}/enable",
+              summary="Enables a modem's connection.",
+              description="Sets an xDSL modem's admin state to enabled.")
 def enable_xdsl_port(
         request: Request,
         node_id: str,
@@ -240,9 +240,9 @@ def enable_xdsl_port(
     return ModemAction(success=cms.enable_xdsl_port(node_id, shelf_nr, card_nr, interface_id), additional_info="")
 
 
-@router.get("/xdsl/{node_id}/{shelf_nr}/{card_nr}/{interface_id}/disable",
-            summary="Disables a modem's connection.",
-            description="Sets an xDSL modem's admin state to disabled.")
+@router.patch("/xdsl/{node_id}/{shelf_nr}/{card_nr}/{interface_id}/disable",
+              summary="Disables a modem's connection.",
+              description="Sets an xDSL modem's admin state to disabled.")
 def disable_xdsl_port(
         request: Request,
         node_id: str,
@@ -278,9 +278,9 @@ def get_node_alarms(
     return cms.get_node_alarms(node_id)
 
 
-@router.get("/budibase/{bid}/enable",
-            summary="Enables a broadband service based on the BID (Broadband Identifier).",
-            description="Enables a broadband service based on the BID. This route is designed to handle enabling ONTs and xDSL connections.")
+@router.patch("/budibase/{bid}/enable",
+              summary="Enables a broadband service based on the BID (Broadband Identifier).",
+              description="Enables a broadband service based on the BID. This route is designed to handle enabling ONTs and xDSL connections.")
 def smart_enable_bid(
         request: Request,
         bid: str,
@@ -327,9 +327,9 @@ def smart_enable_bid(
         return OntAction(success=False, additional_info=str(e))
 
 
-@router.get("/budibase/{bid}/disable",
-            summary="Disables a broadband service based on the BID (Broadband Identifier).",
-            description="Disables a broadband service based on the BID. This route is designed to handle disabling ONTs and xDSL connections.")
+@router.patch("/budibase/{bid}/disable",
+              summary="Disables a broadband service based on the BID (Broadband Identifier).",
+              description="Disables a broadband service based on the BID. This route is designed to handle disabling ONTs and xDSL connections.")
 def smart_disable_bid(
         request: Request,
         bid: str,
