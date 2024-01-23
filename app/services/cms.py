@@ -1,4 +1,5 @@
 # Standard Library Imports
+import json
 import random
 
 # Third Party Imports
@@ -98,7 +99,7 @@ class CmsClient:
         resp, _ = self.__post(payload)
 
         if resp == {}:
-            raise CmsCommunicationFailure
+            raise CmsCommunicationFailure(self.netconf_url)
 
         # Verify logout success
         code = get(resp, "Envelope.Body.auth-reply.ResultCode")
@@ -2114,7 +2115,8 @@ class CmsClient:
             </soapenv:Body>
             </soapenv:Envelope>"""
 
-        resp = self.__post(payload, timeout=30000)
+        resp, _ = self.__post(payload, timeout=30000)
+        print(json.dumps(resp, indent=2))
 
         return XDSLLineTest(
             parent_node=node_id,
