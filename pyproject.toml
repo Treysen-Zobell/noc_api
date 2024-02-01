@@ -1,32 +1,21 @@
 [tool.poetry]
-name = "dashboard-api"
+name = "noc-api"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Treysen-Zobell <36913811+Treysen-Zobell@users.noreply.github.com>"]
 readme = "README.md"
-packages = [{include = "dashboard_api"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
-fastapi = "^0.101.1"
-uvicorn = {extras = ["standard"], version = "^0.23.2"}
-sqlmodel = "^0.0.8"
-httpx = "^0.24.1"
-psycopg2-yugabytedb = "^2.9.3.post0"
+python = "^3.11"
+fastapi = "^0.109.0"
 requests = "^2.31.0"
+pydash = "^7.0.7"
 xmltodict = "^0.13.0"
-coloredlogs = "^15.0.1"
-pydash = "^7.0.6"
+uvicorn = "^0.27.0.post1"
 fastapi-utils = "^0.2.1"
+python-dotenv = "^1.0.1"
+black = "^24.1.1"
 
-
-[tool.poetry.group.dev.dependencies]
-isort = "^5.12.0"
-pytest = "^7.4.0"
-black = "^23.7.0"
-flake8 = "^6.1.0"
-bandit = "^1.7.5"
-pytest-mock = "^3.11.1"
 
 [build-system]
 requires = ["poetry-core"]
