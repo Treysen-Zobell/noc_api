@@ -8,12 +8,12 @@ import xmltodict
 from pydash.objects import get
 
 # Local App Imports
-from app.models.exceptions import (
+from app.services.exceptions import (
     CmsAuthenticationFailure,
     CmsCommunicationFailure,
     CmsDeauthenticationFailure,
 )
-from app.models.modem import (
+from app.models.v1.cms.modem import (
     ModemInterface,
     ModemPort,
     ModemPerformance,
@@ -21,7 +21,7 @@ from app.models.modem import (
     XDSLLineTest,
     NodeAlarms,
 )
-from app.models.ont import (
+from app.models.v1.cms.ont import (
     OntGeneral,
     OntStatus,
     OntPerformance,

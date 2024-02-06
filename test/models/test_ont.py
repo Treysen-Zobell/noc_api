@@ -2,7 +2,7 @@ import unittest
 
 import pydantic
 
-from app.models.ont import OntGeneral
+from app.models.v1.cms.ont import OntGeneral
 
 
 class TestModel(unittest.TestCase):
