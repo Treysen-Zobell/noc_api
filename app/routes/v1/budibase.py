@@ -7,13 +7,13 @@ import requests
 # Third Party Imports
 from fastapi import APIRouter, Request
 
-from app.models.modem import (
+from app.models.v1.cms.modem import (
     Modem,
     ModemAction,
 )
 
 # Local App Imports
-from app.models.ont import (
+from app.models.v1.cms.ont import (
     OntGeneral,
     OntAction,
 )

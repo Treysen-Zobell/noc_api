@@ -1,6 +1,6 @@
 import unittest
 
-from app.models.exceptions import EnvironmentVarNotExists
+from app.services.exceptions import EnvironmentVarNotExists
 from app.services.environment import get_env
 
 

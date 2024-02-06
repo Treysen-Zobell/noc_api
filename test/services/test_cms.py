@@ -1,6 +1,6 @@
 import unittest
 
-from app.models.exceptions import (
+from app.services.exceptions import (
     CmsCommunicationFailure,
     CmsAuthenticationFailure,
     CmsDeauthenticationFailure,

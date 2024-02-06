@@ -7,8 +7,8 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_utils.tasks import repeat_every
 
-from app.models.exceptions import CmsDeauthenticationFailure
-from app.routes import cms
+from app.services.exceptions import CmsDeauthenticationFailure
+from app.routes.v1 import cms
 from app.services.cms import CmsClient
 
 # Local App Imports
