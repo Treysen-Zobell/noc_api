@@ -13,7 +13,7 @@ from app.routes.v1 import cms
 from app.services.cms import CmsClient
 
 # Local App Imports
-from app.services.environment import API_URL
+from app.services.environment import API_URL, CMS_IP, CMS_USERNAME, CMS_PASSWORD
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -49,7 +49,7 @@ app.add_middleware(
 app.include_router(cms.router)
 
 # Persistent connections
-cms_client = CmsClient()
+cms_client = CmsClient(CMS_IP, CMS_USERNAME, CMS_PASSWORD)
 app.state.cms = cms_client
 
 

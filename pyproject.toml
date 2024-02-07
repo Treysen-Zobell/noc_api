@@ -15,6 +15,7 @@ uvicorn = "^0.27.0.post1"
 fastapi-utils = "^0.2.1"
 python-dotenv = "^1.0.1"
 black = "^24.1.1"
+pyyaml = "^6.0.1"
 
 
 [build-system]
