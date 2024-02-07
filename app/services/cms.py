@@ -352,16 +352,19 @@ class CmsClient:
 
         return onts
 
-    def get_ont_location(self, node_id: str, ont_id: int):
+    def get_ont_location(
+        self, node_id: str, ont_id: int, _operation_type: str = "get-config"
+    ):
         """
-        todo get ont location docs
+
         :param node_id:
         :param ont_id:
+        :param _operation_type:
         :return:
         """
         payload = self.generate_payload(
             node_id,
-            "get-config",
+            _operation_type,
             {
                 "object": {
                     "type": "Ont",
@@ -376,27 +379,7 @@ class CmsClient:
         return resp
 
     def get_ont_status(self, node_id: str, ont_id: int):
-        """
-        todo get ont status docs
-        :param node_id:
-        :param ont_id:
-        :return:
-        """
-        payload = self.generate_payload(
-            node_id,
-            "get",
-            {
-                "object": {
-                    "type": "Ont",
-                    "id": {"ont": ont_id},
-                }
-            },
-        )
-        resp, more = self.post(
-            payload,
-            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.data.top.object",
-        )
-        return resp
+        return self.get_ont_location(node_id, ont_id, _operation_type="get")
 
     def get_ont_errors(
         self, node_id: str, ont_id: int, interval: str = "1-day", count: int = 8
@@ -462,6 +445,113 @@ class CmsClient:
             payload,
             unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.action-reply",
         )
+
+    # <--------------------------------------------------------------------------------------------------------- ONT GE
+
+    def get_ont_port_location(
+        self,
+        node_id: str,
+        ont_id: int,
+        port_type: str,
+        port_nr: int,
+        _operation_type: str = "get-config",
+    ):
+        slot_table = {
+            "OntRg": 8,
+            "OntFb": 9,
+            "OntEthGe": 3,
+            "OntEthFe": 5,
+            "OntEthHpna": 4,
+            "OntPots": 6,
+            "OntDs1": 7,
+            "OntRfAvo": None,
+            "OntVideoRf": 1,
+            "OntVideoHotRf": 2,
+            "OntEthSvc": 2,
+        }
+
+        params = {
+            "object": {
+                "type": port_type,
+                "id": {
+                    "ont": ont_id,
+                    "ontslot": get(slot_table, port_type),
+                    port_type.lower(): port_nr,
+                },
+            }
+        }
+        if params["object"]["id"]["ontslot"] is None:
+            params["object"]["id"].pop("ontslot")
+        payload = self.generate_payload(node_id, "get-config", params)
+
+        resp, _ = self.post(
+            payload,
+            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.data.top.object",
+        )
+        return resp
+
+    def get_ont_port_status(
+        self, node_id: str, ont_id: int, port_type: str, port_nr: int
+    ):
+        return self.get_ont_port_location(
+            node_id, ont_id, port_type, port_nr, _operation_type="get"
+        )
+
+    def get_ont_port_leases(
+        self, node_id: str, ont_id: int, port_type: str, port_nr: int
+    ):
+        slot_table = {
+            "OntRg": 8,
+            "OntFb": 9,
+            "OntEthGe": 3,
+            "OntEthFe": 5,
+            "OntEthHpna": 4,
+            "OntPots": 6,
+            "OntDs1": 7,
+            "OntRfAvo": None,
+            "OntVideoRf": 1,
+            "OntVideoHotRf": 2,
+            "OntEthSvc": 2,
+        }
+
+        params = {
+            "action-type": "show-dhcp-leases",
+            "action-args": {
+                "object": {
+                    "type": port_type,
+                    "id": {
+                        "ont": ont_id,
+                        "ontslot": get(slot_table, port_type),
+                        port_type.lower(): port_nr,
+                    },
+                },
+            },
+        }
+        if params["action-args"]["object"]["id"]["ontslot"] is None:
+            params["action-args"]["object"]["id"].pop("ontslot")
+
+        leases = []
+        more = True
+        while more:
+            # Generate and send payload
+            payload = self.generate_payload(
+                node_id,
+                "action",
+                params,
+            )
+            resp, more = self.post(
+                payload,
+                unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.action-reply",
+            )
+            leases.extend(resp)
+
+            # Assemble after filter
+            if more and len(leases) > 0:
+                params["action-args"]["after"] = {
+                    "mac": get(leases[-1], "entry.mac")
+                }  # untested, idk if this will work
+
+        return leases
 
     # <-------------------------------------------------------------------------------------------------------- Utility
 
