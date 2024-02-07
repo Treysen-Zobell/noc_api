@@ -5,6 +5,7 @@ import json
 import uvicorn
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
 from fastapi_utils.tasks import repeat_every
 
 from app.services.exceptions import CmsDeauthenticationFailure
@@ -15,12 +16,12 @@ from app.services.cms import CmsClient
 from app.services.environment import API_URL
 
 
-def custom_generate_unique_id(route: APIRouter) -> str:
+def custom_generate_unique_id(route: APIRoute) -> str:
     """
     Generate unique id for route using the routes name
 
     Args:
-        route (APIRouter): The route object
+        route (APIRoute): The route object
 
     Returns:
         str: Name of the route
