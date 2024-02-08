@@ -1,6 +1,6 @@
 import json
 import random
-from typing import Mapping, Any, List
+from typing import Mapping, Any, List, Iterable
 from fastapi.logger import logger
 
 import requests
@@ -18,6 +18,19 @@ class CmsClient:
         self.session_id = None
         self.logger = logger
         self.login()
+
+        self.ont_slot_table = {
+            "OntRg": 8,
+            "OntFb": 9,
+            "OntEthGe": 3,
+            "OntEthFe": 5,
+            "OntEthHpna": 4,
+            "OntPots": 6,
+            "OntDs1": 7,
+            "OntRfAvo": None,
+            "OntVideoRf": 1,
+            "OntVideoHotRf": 2,
+        }
 
     # <------------------------------------------------------------------------------------------------- Authentication
 
@@ -174,6 +187,18 @@ class CmsClient:
 
         return shelves
 
+    def get_shelf(self, node_id: str, shelf_nr: int):
+        payload = self.generate_payload(
+            node_id,
+            "get-config",
+            {"object": {"type": "Shelf", "id": {"shelf": shelf_nr}}},
+        )
+        resp, _ = self.post(
+            payload,
+            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.data.top.object",
+        )
+        return resp
+
     # <----------------------------------------------------------------------------------------------------------- Card
 
     def list_shelf_cards(self, node_id: str, shelf_nr: int):
@@ -216,6 +241,18 @@ class CmsClient:
                 }
 
         return cards
+
+    def get_card(self, node_id: str, shelf_nr: int, card_nr: int):
+        payload = self.generate_payload(
+            node_id,
+            "get-config",
+            {"object": {"type": "Card", "id": {"shelf": shelf_nr, "card": card_nr}}},
+        )
+        resp, _ = self.post(
+            payload,
+            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.data.top.object",
+        )
+        return resp
 
     # <------------------------------------------------------------------------------------------------------------ PON
 
@@ -260,6 +297,23 @@ class CmsClient:
                 }
 
         return pons
+
+    def get_pon(self, node_id: str, shelf_nr: int, card_nr: int, pon_nr: int):
+        payload = self.generate_payload(
+            node_id,
+            "get-config",
+            {
+                "object": {
+                    "type": "GponPort",
+                    "id": {"shelf": shelf_nr, "card": card_nr, "gponport": pon_nr},
+                }
+            },
+        )
+        resp, _ = self.post(
+            payload,
+            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.data.top.object",
+        )
+        return resp
 
     # <------------------------------------------------------------------------------------------------------------ ONT
 
@@ -446,7 +500,51 @@ class CmsClient:
             unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.action-reply",
         )
 
-    # <--------------------------------------------------------------------------------------------------------- ONT GE
+    # <------------------------------------------------------------------------------------------------------ ONT Ports
+
+    def list_ont_ports(
+        self,
+        node_id: str,
+        ont_id: int,
+        port_types: Iterable[str] = (
+            "OntRg",
+            "OntFb",
+            "OntEthGe",
+            "OntEthFe",
+            "OntEthHpna",
+            "OntPots",
+            "OntDs1",
+            "OntRfAvo",
+            "OntVideoRf",
+            "OntVideoHotRf",
+        ),
+    ):
+        ports = []
+        for port_type in port_types:
+            more = True
+            params = {
+                "object": {
+                    "type": "Ont",
+                    "id": {
+                        "ont": ont_id,
+                    },
+                    "children": {"type": port_type},
+                }
+            }
+            while more:
+                payload = self.generate_payload(node_id, "get-config", params)
+                resp, more = self.post(
+                    payload,
+                    unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.data.top.object.children.child",
+                )
+
+                if more and len(resp):
+                    params["object"]["children"]["after"] = {"id": get(resp, "id")}
+
+                if resp != [None]:
+                    ports.extend(resp)
+
+        return ports
 
     def get_ont_port_location(
         self,
@@ -456,33 +554,19 @@ class CmsClient:
         port_nr: int,
         _operation_type: str = "get-config",
     ):
-        slot_table = {
-            "OntRg": 8,
-            "OntFb": 9,
-            "OntEthGe": 3,
-            "OntEthFe": 5,
-            "OntEthHpna": 4,
-            "OntPots": 6,
-            "OntDs1": 7,
-            "OntRfAvo": None,
-            "OntVideoRf": 1,
-            "OntVideoHotRf": 2,
-            "OntEthSvc": 2,
-        }
-
         params = {
             "object": {
                 "type": port_type,
                 "id": {
                     "ont": ont_id,
-                    "ontslot": get(slot_table, port_type),
+                    "ontslot": get(self.ont_slot_table, port_type),
                     port_type.lower(): port_nr,
                 },
             }
         }
         if params["object"]["id"]["ontslot"] is None:
             params["object"]["id"].pop("ontslot")
-        payload = self.generate_payload(node_id, "get-config", params)
+        payload = self.generate_payload(node_id, _operation_type, params)
 
         resp, _ = self.post(
             payload,
@@ -500,20 +584,6 @@ class CmsClient:
     def get_ont_port_leases(
         self, node_id: str, ont_id: int, port_type: str, port_nr: int
     ):
-        slot_table = {
-            "OntRg": 8,
-            "OntFb": 9,
-            "OntEthGe": 3,
-            "OntEthFe": 5,
-            "OntEthHpna": 4,
-            "OntPots": 6,
-            "OntDs1": 7,
-            "OntRfAvo": None,
-            "OntVideoRf": 1,
-            "OntVideoHotRf": 2,
-            "OntEthSvc": 2,
-        }
-
         params = {
             "action-type": "show-dhcp-leases",
             "action-args": {
@@ -521,7 +591,7 @@ class CmsClient:
                     "type": port_type,
                     "id": {
                         "ont": ont_id,
-                        "ontslot": get(slot_table, port_type),
+                        "ontslot": get(self.ont_slot_table, port_type),
                         port_type.lower(): port_nr,
                     },
                 },
@@ -549,9 +619,38 @@ class CmsClient:
             if more and len(leases) > 0:
                 params["action-args"]["after"] = {
                     "mac": get(leases[-1], "entry.mac")
-                }  # untested, idk if this will work
+                }  # todo untested, idk if this will work
 
         return leases
+
+    def clear_ont_port_leases(
+        self, node_id: str, ont_id: int, port_type: str, port_nr: int
+    ):
+        params = {
+            "action-type": "clear-dhcp-leases",
+            "action-args": {
+                "object": {
+                    "type": port_type,
+                    "id": {
+                        "ont": ont_id,
+                        "ontslot": get(self.ont_slot_table, port_type),
+                        port_type.lower(): port_nr,
+                    },
+                },
+            },
+        }
+        if params["action-args"]["object"]["id"]["ontslot"] is None:
+            params["action-args"]["object"]["id"].pop("ontslot")
+
+        payload = self.generate_payload(
+            node_id,
+            "action",
+            params,
+        )
+        self.post(
+            payload,
+            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.action-reply",
+        )
 
     # <-------------------------------------------------------------------------------------------------------- Utility
 
