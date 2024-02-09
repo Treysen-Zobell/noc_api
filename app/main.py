@@ -5,6 +5,7 @@ import json
 import uvicorn
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.routing import APIRoute
 from fastapi_utils.tasks import repeat_every
 

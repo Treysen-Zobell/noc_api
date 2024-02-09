@@ -438,66 +438,26 @@ class CmsClient:
     def get_ont_errors(
         self, node_id: str, ont_id: int, interval: str = "1-day", count: int = 8
     ):
-        entries = []
-        more = True
-        params = {
-            "action-type": "show-ont-pm",
-            "action-args": {
-                "object": {
-                    "type": "Ont",
-                    "id": {"ont": ont_id},
-                },
-                "bin-type": interval,
-                "start-bin": 1,
-                "count": count,
-            },
-        }
-
-        while more:
-            # Generate and send payload
-            payload = self.generate_payload(
-                node_id,
-                "action",
-                params,
-            )
-            resp, more = self.post(
-                payload,
-                unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.action-reply.bin",
-            )
-            entries.extend(resp)
-
-            # Assemble after filter
-            if more and len(entries) > 0:
-                params["action-args"]["start-bin"] = len(entries) + 1
-                params["action-args"]["count"] = count - len(entries)
-
-        return entries
+        return self.get_table(
+            node_id,
+            "show-ont-pm",
+            {"type": "Ont", "id": {"ont": ont_id}},
+            interval,
+            count,
+        )
 
     def clear_ont_errors(
         self, node_id: str, ont_id: int, interval: str = "1-day", count: int = 1
     ):
-        params = {
-            "action-type": "clear-ont-pm",
-            "action-args": {
-                "object": {
-                    "type": "Ont",
-                    "id": {"ont": ont_id},
-                },
-                "bin-type": interval,
-                "start-bin": 1,
-                "count": count,
-            },
-        }
-
-        # Generate and send payload
-        payload = self.generate_payload(
+        return self.clear_table(
             node_id,
-            "action",
-            params,
-        )
-        self.post(
-            payload,
-            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.action-reply",
+            "clear-ont-pm",
+            {
+                "type": "Ont",
+                "id": {"ont": ont_id},
+            },
+            interval,
+            count,
         )
 
     # <------------------------------------------------------------------------------------------------------ ONT Ports
@@ -584,21 +544,332 @@ class CmsClient:
     def get_ont_port_leases(
         self, node_id: str, ont_id: int, port_type: str, port_nr: int
     ):
+        ont_location = {
+            "type": port_type,
+            "id": {
+                "ont": ont_id,
+                "ontslot": get(self.ont_slot_table, port_type),
+                port_type.lower(): port_nr,
+            },
+        }
+        if ont_location["id"]["ontslot"] is None:
+            ont_location["id"].pop("ontslot")
+        return self.get_leases(node_id, ont_location)
+
+    # <----------------------------------------------------------------------------------------------------------- XDSL
+
+    def list_card_xdsl(self, node_id: str, shelf_nr: int, card_nr: int):
+        params = {
+            "object": {
+                "type": "Card",
+                "id": {
+                    "shelf": shelf_nr,
+                    "card": card_nr,
+                },
+                "children": {"type": "DslPort"},
+            }
+        }
+        more = True
+        modems = []
+
+        while more:
+            payload = self.generate_payload(
+                node_id,
+                "get-config",
+                params,
+            )
+            resp, more = self.post(
+                payload,
+                unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.data.top.object.children.child",
+            )
+            modems.extend(resp)
+
+            if more and len(resp) > 0:
+                params["object"]["children"]["after"] = {
+                    "type": resp[-1]["type"],
+                    "id": resp[-1]["id"],
+                }
+
+        return modems
+
+    def get_xdsl_port_provisioning(
+        self, node_id: str, shelf_nr: int, card_nr: int, port_nr: int
+    ):
+        payload = self.generate_payload(
+            node_id,
+            "get-config",
+            {
+                "object": {
+                    "type": "DslPort",
+                    "id": {
+                        "shelf": shelf_nr,
+                        "card": card_nr,
+                        "dslport": port_nr,
+                    },
+                }
+            },
+        )
+        resp, _ = self.post(
+            payload,
+            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.data.top.object",
+        )
+        return resp[0]
+
+    def get_xdsl_port_status(
+        self, node_id: str, shelf_nr: int, card_nr: int, port_nr: int
+    ):
+        payload = self.generate_payload(
+            node_id,
+            "get",
+            {
+                "object": {
+                    "type": "DslPort",
+                    "id": {
+                        "shelf": shelf_nr,
+                        "card": card_nr,
+                        "dslport": port_nr,
+                    },
+                }
+            },
+        )
+        resp, _ = self.post(
+            payload,
+            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.data.top.object",
+        )
+        return resp[0]
+
+    def get_xdsl_port_eth_performance(
+        self,
+        node_id: str,
+        shelf_nr: int,
+        card_nr: int,
+        port_nr: int,
+        interval: str = "1-day",
+        count: int = 1,
+    ):
+        return self.get_table(
+            node_id,
+            "show-eth-pm",
+            {
+                "type": "DslPort",
+                "id": {"shelf": shelf_nr, "card": card_nr, "dslport": port_nr},
+            },
+            interval,
+            count,
+        )
+
+    def clear_xdsl_port_eth_performance(
+        self,
+        node_id: str,
+        shelf_nr: int,
+        card_nr: int,
+        port_nr: int,
+        interval: str = "1-day",
+        count: int = 1,
+    ):
+        return self.clear_table(
+            node_id,
+            "clear-eth-pm",
+            {
+                "type": "DslPort",
+                "id": {"shelf": shelf_nr, "card": card_nr, "dslport": port_nr},
+            },
+            interval,
+            count,
+        )
+
+    def get_xdsl_port_dsl_performance(
+        self,
+        node_id: str,
+        shelf_nr: int,
+        card_nr: int,
+        port_nr: int,
+        interval: str = "1-day",
+        count: int = 1,
+    ):
+        return self.get_table(
+            node_id,
+            "show-dsl-pm",
+            {
+                "type": "DslPort",
+                "id": {"shelf": shelf_nr, "card": card_nr, "dslport": port_nr},
+            },
+            interval,
+            count,
+        )
+
+    def clear_xdsl_port_dsl_performance(
+        self,
+        node_id: str,
+        shelf_nr: int,
+        card_nr: int,
+        port_nr: int,
+        interval: str = "1-day",
+        count: int = 1,
+    ):
+        return self.clear_table(
+            node_id,
+            "clear-dsl-pm",
+            {
+                "type": "DslPort",
+                "id": {"shelf": shelf_nr, "card": card_nr, "dslport": port_nr},
+            },
+            interval,
+            count,
+        )
+
+    def get_xdsl_ai_provisioning(
+        self, node_id: str, shelf_nr: int, card_nr: int, port_nr: int
+    ):
+        payload = self.generate_payload(
+            node_id,
+            "get-config",
+            {
+                "object": {
+                    "type": "EthIntf",
+                    "id": {
+                        "shelf": shelf_nr,
+                        "card": card_nr,
+                        "ethintf": port_nr,  # 200 + port
+                    },
+                }
+            },
+        )
+        resp, _ = self.post(
+            payload,
+            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.data.top.object",
+        )
+        return resp[0]
+
+    def get_xdsl_leases(self, node_id: str, shelf_nr: int, card_nr: int, port_nr: int):
+        port_location = {
+            "type": "EthIntf",
+            "id": {
+                "shelf": shelf_nr,
+                "card": card_nr,
+                "ethintf": port_nr,
+            },
+        }
+        return self.get_leases(node_id, port_location)
+
+    # <----------------------------------------------------------------------------------------------------------- POTS
+
+    def list_card_pots(self, node_id: str, shelf_nr: int, pots_nr: int):
+        params = {
+            "object": {
+                "type": "Card",
+                "id": {
+                    "shelf": shelf_nr,
+                    "card": pots_nr,  # 200 + port
+                },
+                "children": {"type": "Pots"},
+            }
+        }
+        more = True
+        pots_entries = []
+
+        while more:
+            payload = self.generate_payload(
+                node_id,
+                "get-config",
+                params,
+            )
+            resp, more = self.post(
+                payload,
+                unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.data.top.object.children.child",
+            )
+            pots_entries.extend(resp)
+
+            if more and len(resp) > 0:
+                params["object"]["children"]["after"] = {
+                    "type": resp[-1]["type"],
+                    "id": resp[-1]["id"],
+                }
+
+        return pots_entries
+
+    # <-------------------------------------------------------------------------------------------------------- Utility
+
+    def get_table(
+        self,
+        node_id: str,
+        action_type: str,
+        object_info: dict,
+        interval: str,
+        count: int,
+    ):
+        entries = []
+        more = True
+        params = {
+            "action-type": action_type,
+            "action-args": {
+                "object": object_info,
+                "bin-type": interval,
+                "start-bin": 1,
+                "count": count,
+            },
+        }
+
+        while more:
+            # Generate and send payload
+            payload = self.generate_payload(
+                node_id,
+                "action",
+                params,
+            )
+            resp, more = self.post(
+                payload,
+                unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.action-reply.bin",
+            )
+            entries.extend(resp)
+
+            # Assemble after filter
+            if more and len(entries) > 0:
+                params["action-args"]["start-bin"] = len(entries) + 1
+                params["action-args"]["count"] = count - len(entries)
+
+        return entries
+
+    def clear_table(
+        self,
+        node_id: str,
+        action_type: str,
+        object_info: dict,
+        interval: str,
+        count: int,
+    ):
+        params = {
+            "action-type": action_type,
+            "action-args": {
+                "object": object_info,
+                "bin-type": interval,
+                "start-bin": 1,
+                "count": count,
+            },
+        }
+
+        # Generate and send payload
+        payload = self.generate_payload(
+            node_id,
+            "action",
+            params,
+        )
+        resp, _ = self.post(
+            payload,
+            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply",
+        )
+        if isinstance(resp[0], dict) and "ok" in resp[0]:
+            return True
+        return False
+
+    def get_leases(self, node_id: str, port_info: dict):
         params = {
             "action-type": "show-dhcp-leases",
             "action-args": {
-                "object": {
-                    "type": port_type,
-                    "id": {
-                        "ont": ont_id,
-                        "ontslot": get(self.ont_slot_table, port_type),
-                        port_type.lower(): port_nr,
-                    },
-                },
+                "object": port_info,
             },
         }
-        if params["action-args"]["object"]["id"]["ontslot"] is None:
-            params["action-args"]["object"]["id"].pop("ontslot")
+        print(params)
 
         leases = []
         more = True
@@ -623,36 +894,27 @@ class CmsClient:
 
         return leases
 
-    def clear_ont_port_leases(
-        self, node_id: str, ont_id: int, port_type: str, port_nr: int
-    ):
+    def delete_lease(self, node_id: str, ip_address: str, mac_address: str):
         params = {
-            "action-type": "clear-dhcp-leases",
+            "action-type": "delete-dhcp-lease",
             "action-args": {
-                "object": {
-                    "type": port_type,
-                    "id": {
-                        "ont": ont_id,
-                        "ontslot": get(self.ont_slot_table, port_type),
-                        port_type.lower(): port_nr,
-                    },
-                },
+                "ip": ip_address,
+                "mac": mac_address,
             },
         }
-        if params["action-args"]["object"]["id"]["ontslot"] is None:
-            params["action-args"]["object"]["id"].pop("ontslot")
 
         payload = self.generate_payload(
             node_id,
             "action",
             params,
         )
-        self.post(
+        resp, _ = self.post(
             payload,
-            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply.action-reply",
+            unpack_level="soapenv:Envelope.soapenv:Body.rpc-reply",
         )
-
-    # <-------------------------------------------------------------------------------------------------------- Utility
+        if isinstance(resp[0], dict) and "ok" in resp[0]:
+            return True
+        return False
 
     @property
     def message_id(self):

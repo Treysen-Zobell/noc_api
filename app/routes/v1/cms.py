@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Request, HTTPException
 from app.services.cms import CmsClient
 
@@ -17,16 +15,6 @@ def list_nodes(request: Request):
     description="Exposed, needs data model",
 )
 def get_node(request: Request, node_id: str):
-    cms: CmsClient = request.app.state.cms
-    return cms.get_node(node_id)  # todo process reply
-
-
-@router.patch(
-    "/node/{node_id}",
-    summary="Get node information",
-    description="Exposed, needs data model",
-)
-def tmp(request: Request, node_id: str):
     cms: CmsClient = request.app.state.cms
     return cms.get_node(node_id)  # todo process reply
 
@@ -154,6 +142,19 @@ def get_ont_status(request: Request, node_id: str, ont_id: int):
 def get_ont_errors(
     request: Request, node_id: str, ont_id: int, interval: str = "1-day", count: int = 8
 ):
+    if interval not in ["1-day", "15-min"]:
+        raise HTTPException(
+            422, detail=f"Interval must be '1-day' or '15-min', not '{interval}'"
+        )
+
+    if interval == "1-day" and count > 8:
+        raise HTTPException(422, detail="Count must be at most 8 if interval is 1-day")
+
+    if interval == "15-min" and count > 96:
+        raise HTTPException(
+            422, detail="Count must be at most 96 if interval is 15-min"
+        )
+
     cms: CmsClient = request.app.state.cms
     return cms.get_ont_errors(
         node_id, ont_id, interval=interval, count=count
@@ -170,10 +171,26 @@ def get_ont_errors(
 def clear_ont_errors(
     request: Request, node_id: str, ont_id: int, interval: str = "1-day", count: int = 1
 ):
+    if interval not in ["1-day", "15-min"]:
+        raise HTTPException(
+            422, detail=f"Interval must be '1-day' or '15-min', not '{interval}'"
+        )
+
+    if interval == "1-day" and count > 8:
+        raise HTTPException(422, detail="Count must be at most 8 if interval is 1-day")
+
+    if interval == "15-min" and count > 96:
+        raise HTTPException(
+            422, detail="Count must be at most 96 if interval is 15-min"
+        )
+
     cms: CmsClient = request.app.state.cms
-    return cms.clear_ont_errors(
-        node_id, ont_id, interval=interval, count=count
-    )  # todo input validation
+    success = cms.clear_ont_errors(node_id, ont_id, interval=interval, count=count)
+    if not success:
+        raise HTTPException(500, detail="CMS server returned an error")
+
+
+# <---------------------------------------------------------------------------------------------------------- ONT Ports
 
 
 @router.get(
@@ -255,9 +272,16 @@ def get_ont_ge_port_leases(request: Request, node_id: str, ont_id: int, port_nr:
     summary="Clear all leases on a GE port on an ont",
     description="Exposed, needs data model.",
 )
-def get_ont_ge_port_leases(request: Request, node_id: str, ont_id: int, port_nr: int):
+def clear_ont_ge_port_leases(request: Request, node_id: str, ont_id: int, port_nr: int):
     cms: CmsClient = request.app.state.cms
-    return cms.clear_ont_port_leases(node_id, ont_id, "OntEthGe", port_nr)
+    leases = cms.get_ont_port_leases(node_id, ont_id, "OntEthGe", port_nr)
+    reply = {}
+    for lease in leases:
+        ip = lease["entry"]["ip"]
+        mac = lease["entry"]["mac"]
+        success = cms.delete_lease(node_id, ip, mac)
+        reply[ip] = "Clear" if success else "Fail"
+    return reply
 
 
 # <------------------------------------------------------------------------------------------------------------- ONT FE
@@ -298,9 +322,16 @@ def get_ont_fe_port_leases(request: Request, node_id: str, ont_id: int, port_nr:
     summary="Clear all leases on a FE port on an ont",
     description="Exposed, needs data model.",
 )
-def get_ont_fe_port_leases(request: Request, node_id: str, ont_id: int, port_nr: int):
+def clear_ont_fe_port_leases(request: Request, node_id: str, ont_id: int, port_nr: int):
     cms: CmsClient = request.app.state.cms
-    return cms.clear_ont_port_leases(node_id, ont_id, "OntEthFe", port_nr)
+    leases = cms.get_ont_port_leases(node_id, ont_id, "OntEthFe", port_nr)
+    reply = {}
+    for lease in leases:
+        ip = lease["entry"]["ip"]
+        mac = lease["entry"]["mac"]
+        success = cms.delete_lease(node_id, ip, mac)
+        reply[ip] = "Clear" if success else "Fail"
+    return reply
 
 
 # <------------------------------------------------------------------------------------------------------------- ONT RG
@@ -341,9 +372,16 @@ def get_ont_rg_port_leases(request: Request, node_id: str, ont_id: int, port_nr:
     summary="Clear all leases on a RG port on an ont",
     description="Exposed, needs data model.",
 )
-def get_ont_rg_port_leases(request: Request, node_id: str, ont_id: int, port_nr: int):
+def clear_ont_rg_port_leases(request: Request, node_id: str, ont_id: int, port_nr: int):
     cms: CmsClient = request.app.state.cms
-    return cms.clear_ont_port_leases(node_id, ont_id, "OntRg", port_nr)
+    leases = cms.get_ont_port_leases(node_id, ont_id, "OntRg", port_nr)
+    reply = {}
+    for lease in leases:
+        ip = lease["entry"]["ip"]
+        mac = lease["entry"]["mac"]
+        success = cms.delete_lease(node_id, ip, mac)
+        reply[ip] = "Clear" if success else "Fail"
+    return reply
 
 
 # <---------------------------------------------------------------------------------------------------------- ONT Voice
@@ -371,29 +409,6 @@ def get_ont_voice_port_status(
 ):
     cms: CmsClient = request.app.state.cms
     return cms.get_ont_port_status(node_id, ont_id, "OntPots", port_nr)
-
-
-# <------------------------------------------------------------------------------------------------------------- ONT RG
-
-
-@router.get(
-    "/node/{node_id}/ont/{ont_id}/port/rg/{port_nr}/location",
-    summary="Get all location information for a RG port on an ont",
-    description="Exposed, needs data model.",
-)
-def get_ont_rg_port_location(request: Request, node_id: str, ont_id: int, port_nr: int):
-    cms: CmsClient = request.app.state.cms
-    return cms.get_ont_port_location(node_id, ont_id, "OntRg", port_nr)
-
-
-@router.get(
-    "/node/{node_id}/ont/{ont_id}/port/rg/{port_nr}/status",
-    summary="Get all status information for a RG port on an ont",
-    description="Exposed, needs data model.",
-)
-def get_ont_rg_port_status(request: Request, node_id: str, ont_id: int, port_nr: int):
-    cms: CmsClient = request.app.state.cms
-    return cms.get_ont_port_status(node_id, ont_id, "OntRg", port_nr)
 
 
 # <------------------------------------------------------------------------------------------------------------- ONT FB
@@ -548,3 +563,238 @@ def get_ont_videohotrf_port_status(
 ):
     cms: CmsClient = request.app.state.cms
     return cms.get_ont_port_status(node_id, ont_id, "OntVideoHotRf", port_nr)
+
+
+# <--------------------------------------------------------------------------------------------------------------- XDSL
+
+
+@router.get(
+    "/node/{node_id}/xdsl/shelf/{shelf_nr}/card/{card_nr}",
+    summary="Lists all xdsl modems on a card",
+    description="Exposed, needs data model.",
+)
+def list_xdsl_modems(request: Request, node_id: str, shelf_nr: int, card_nr: int):
+    cms: CmsClient = request.app.state.cms
+    return cms.list_card_xdsl(node_id, shelf_nr, card_nr)
+
+
+@router.get(
+    "/node/{node_id}/xdsl/shelf/{shelf_nr}/card/{card_nr}/port/{port_nr}/port/provisioning",
+    summary="Gets the provisioning info for an xdsl port",
+    description="Exposed, needs data model.",
+)
+def get_xdsl_port_provisioning(
+    request: Request, node_id: str, shelf_nr: int, card_nr: int, port_nr: int
+):
+    cms: CmsClient = request.app.state.cms
+    return cms.get_xdsl_port_provisioning(node_id, shelf_nr, card_nr, port_nr)
+
+
+@router.get(
+    "/node/{node_id}/xdsl/shelf/{shelf_nr}/card/{card_nr}/port/{port_nr}/port/status",
+    summary="Gets the provisioning info for an xdsl port",
+    description="Exposed, needs data model.",
+)
+def get_xdsl_port_status(
+    request: Request, node_id: str, shelf_nr: int, card_nr: int, port_nr: int
+):
+    cms: CmsClient = request.app.state.cms
+    return cms.get_xdsl_port_status(node_id, shelf_nr, card_nr, port_nr)
+
+
+@router.get(
+    "/node/{node_id}/xdsl/shelf/{shelf_nr}/card/{card_nr}/port/{port_nr}/port/performance/eth",
+    summary="Gets the performance stats for the modem's ethernet port",
+    description="Exposed, needs data model. Gets the ethernet performance data on a modem and returns them as a set of "
+    "lists ordered from most recent to oldest. Can return intervals of 1-day or 15-min with the optional "
+    "parameter interval. If the interval is 1-day count must be at mose 8, if the interval is 15-min it "
+    "must be at most 96.",
+)
+def get_xdsl_port_performance_eth(
+    request: Request,
+    node_id: str,
+    shelf_nr: int,
+    card_nr: int,
+    port_nr: int,
+    interval: str = "1-day",
+    count: int = 8,
+):
+    if interval not in ["1-day", "15-min"]:
+        raise HTTPException(
+            422, detail=f"Interval must be '1-day' or '15-min', not '{interval}'"
+        )
+
+    if interval == "1-day" and count > 8:
+        raise HTTPException(422, detail="Count must be at most 8 if interval is 1-day")
+
+    if interval == "15-min" and count > 96:
+        raise HTTPException(
+            422, detail="Count must be at most 96 if interval is 15-min"
+        )
+
+    cms: CmsClient = request.app.state.cms
+    return cms.get_xdsl_port_eth_performance(
+        node_id, shelf_nr, card_nr, port_nr, interval=interval, count=count
+    )
+
+
+@router.delete(
+    "/node/{node_id}/xdsl/shelf/{shelf_nr}/card/{card_nr}/port/{port_nr}/port/performance/eth",
+    summary="Gets the performance stats for the modem's ethernet port",
+    description="Exposed, needs data model. Resets the ethernet error data on a modem to 0s for the configured "
+    "selection. The default is the last day. Can clear intervals of 1-day or 15-min with the optional parameter "
+    "interval. If the interval is 1-day count must be at mose 8, if the interval is 15-min it must be at most 96.",
+)
+def clear_xdsl_port_performance_eth(
+    request: Request,
+    node_id: str,
+    shelf_nr: int,
+    card_nr: int,
+    port_nr: int,
+    interval: str = "1-day",
+    count: int = 8,
+):
+    if interval not in ["1-day", "15-min"]:
+        raise HTTPException(
+            422, detail=f"Interval must be '1-day' or '15-min', not '{interval}'"
+        )
+
+    if interval == "1-day" and count > 8:
+        raise HTTPException(422, detail="Count must be at most 8 if interval is 1-day")
+
+    if interval == "15-min" and count > 96:
+        raise HTTPException(
+            422, detail="Count must be at most 96 if interval is 15-min"
+        )
+
+    cms: CmsClient = request.app.state.cms
+    return cms.clear_xdsl_port_eth_performance(
+        node_id, shelf_nr, card_nr, port_nr, interval=interval, count=count
+    )
+
+
+@router.get(
+    "/node/{node_id}/xdsl/shelf/{shelf_nr}/card/{card_nr}/port/{port_nr}/port/performance/dsl",
+    summary="Gets the performance stats for the modem's dsl port",
+    description="Exposed, needs data model. Gets the dsl performance data on a modem and returns them as a set of "
+    "lists ordered from most recent to oldest. Can return intervals of 1-day or 15-min with the optional "
+    "parameter interval. If the interval is 1-day count must be at mose 8, if the interval is 15-min it "
+    "must be at most 96.",
+)
+def get_xdsl_port_performance_dsl(
+    request: Request,
+    node_id: str,
+    shelf_nr: int,
+    card_nr: int,
+    port_nr: int,
+    interval: str = "1-day",
+    count: int = 8,
+):
+    if interval not in ["1-day", "15-min"]:
+        raise HTTPException(
+            422, detail=f"Interval must be '1-day' or '15-min', not '{interval}'"
+        )
+
+    if interval == "1-day" and count > 8:
+        raise HTTPException(422, detail="Count must be at most 8 if interval is 1-day")
+
+    if interval == "15-min" and count > 96:
+        raise HTTPException(
+            422, detail="Count must be at most 96 if interval is 15-min"
+        )
+
+    cms: CmsClient = request.app.state.cms
+    return cms.get_xdsl_port_dsl_performance(
+        node_id, shelf_nr, card_nr, port_nr, interval=interval, count=count
+    )
+
+
+@router.delete(
+    "/node/{node_id}/xdsl/shelf/{shelf_nr}/card/{card_nr}/port/{port_nr}/port/performance/dsl",
+    summary="Gets the performance stats for the modem's ethernet port",
+    description="Exposed, needs data model. Resets the dsl error data on a modem to 0s for the configured "
+    "selection. The default is the last day. Can clear intervals of 1-day or 15-min with the optional parameter "
+    "interval. If the interval is 1-day count must be at mose 8, if the interval is 15-min it must be at most 96.",
+)
+def clear_xdsl_port_performance_dsl(
+    request: Request,
+    node_id: str,
+    shelf_nr: int,
+    card_nr: int,
+    port_nr: int,
+    interval: str = "1-day",
+    count: int = 8,
+):
+    if interval not in ["1-day", "15-min"]:
+        raise HTTPException(
+            422, detail=f"Interval must be '1-day' or '15-min', not '{interval}'"
+        )
+
+    if interval == "1-day" and count > 8:
+        raise HTTPException(422, detail="Count must be at most 8 if interval is 1-day")
+
+    if interval == "15-min" and count > 96:
+        raise HTTPException(
+            422, detail="Count must be at most 96 if interval is 15-min"
+        )
+
+    cms: CmsClient = request.app.state.cms
+    return cms.clear_xdsl_port_dsl_performance(
+        node_id, shelf_nr, card_nr, port_nr, interval=interval, count=count
+    )
+
+
+@router.get(
+    "/node/{node_id}/xdsl/shelf/{shelf_nr}/card/{card_nr}/port/{port_nr}/interface/provisioning",
+    summary="Gets the associated interface info for an xdsl port",
+    description="Exposed, needs data model.",
+)
+def get_xdsl_ai_provisioning(
+    request: Request, node_id: str, shelf_nr: int, card_nr: int, port_nr: int
+):
+    cms: CmsClient = request.app.state.cms
+    return cms.get_xdsl_ai_provisioning(node_id, shelf_nr, card_nr, 200 + port_nr)
+
+
+@router.get(
+    "/node/{node_id}/xdsl/shelf/{shelf_nr}/card/{card_nr}/port/{port_nr}/interface/lease",
+    summary="Gets the lease(s) on the associated interface for the modem",
+    description="Exposed, needs data model.",
+)
+def get_xdsl_leases(
+    request: Request, node_id: str, shelf_nr: int, card_nr: int, port_nr: int
+):
+    cms: CmsClient = request.app.state.cms
+    return cms.get_xdsl_leases(node_id, shelf_nr, card_nr, 200 + port_nr)
+
+
+@router.delete(
+    "/node/{node_id}/xdsl/shelf/{shelf_nr}/card/{card_nr}/port/{port_nr}/interface/lease",
+    summary="Deletes the leases on the associated interface for the modem",
+    description="Exposed, needs data model.",
+)
+def clear_xdsl_leases(
+    request: Request, node_id: str, shelf_nr: int, card_nr: int, port_nr: int
+):
+    cms: CmsClient = request.app.state.cms
+    leases = cms.get_xdsl_leases(node_id, shelf_nr, card_nr, 200 + port_nr)
+    reply = {}
+    for lease in leases:
+        ip = lease["entry"]["ip"]
+        mac = lease["entry"]["mac"]
+        success = cms.delete_lease(node_id, ip, mac)
+        reply[ip] = "Clear" if success else "Fail"
+    return reply
+
+
+# <--------------------------------------------------------------------------------------------------------------- POTS
+
+
+@router.get(
+    "/node/{node_id}/pots/shelf/{shelf_nr}/card/{card_nr}",
+    summary="Lists all pots ports on a card",
+    description="Exposed, needs data model.",
+)
+def list_xdsl_pots(request: Request, node_id: str, shelf_nr: int, card_nr: int):
+    cms: CmsClient = request.app.state.cms
+    return cms.list_card_pots(node_id, shelf_nr, 200 + card_nr)
